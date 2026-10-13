@@ -1,0 +1,406 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Infrachrome">
+<meta name="theme-color" content="#141013">
+<title>Infrachrome</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Figtree:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: photo-editor split — image stage on the left (top on phones), control rack on the right (below on phones). Dark-only by choice: photo editing reads best on dark. */
+:root {
+  --bg: #141013;
+  --panel: #1d171b;
+  --line: #33292f;
+  --fg: #f2e8ed;
+  --muted: #a5949e;
+  --pink: #ec4f8c;
+  --pink-soft: #3a1d2b;
+  --edge: #f0a24b;
+  --display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --body: "Figtree", "Segoe UI", system-ui, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  color-scheme: dark;
+}
+*, *::before, *::after { box-sizing: border-box; }
+:root { padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
+body { margin: 0; }
+img { max-width: 100%; }
+[hidden] { display: none !important; }
+html, body { background: var(--bg); color: var(--fg); }
+body { font-family: var(--body); font-size: 15px; line-height: 1.45; padding-inline: 16px; padding-block: 14px 28px; }
+.wrap { max-width: 1180px; margin: 0 auto; display: grid; gap: 18px; }
+header { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+h1 { font-family: var(--display); font-weight: 700; font-size: clamp(26px, 6vw, 36px); letter-spacing: -0.02em; margin: 0; }
+h1 span { color: var(--pink); }
+.edge { font-family: var(--mono); font-size: 11px; letter-spacing: 0.14em; color: var(--edge); text-transform: uppercase; }
+.main { display: grid; gap: 18px; grid-template-columns: 1fr; }
+@media (min-width: 900px) { .main { grid-template-columns: minmax(0, 1fr) 340px; align-items: start; } }
+.stage { min-width: 0; display: grid; gap: 10px; }
+.frame { position: relative; background: #000; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+.frame canvas { display: block; width: 100%; height: auto; max-height: 72vh; object-fit: contain; }
+.tag { position: absolute; left: 10px; top: 10px; font-family: var(--mono); font-size: 11px; letter-spacing: 0.1em; background: rgba(0,0,0,.62); color: var(--fg); padding: 4px 8px; border-radius: 3px; text-transform: uppercase; }
+.tag.before { color: var(--edge); }
+.hint { font-size: 13px; color: var(--muted); }
+.row { display: flex; gap: 10px; flex-wrap: wrap; }
+button, .file { font: 600 15px var(--body); border-radius: 6px; padding: 12px 16px; cursor: pointer; border: 1px solid var(--line); background: var(--panel); color: var(--fg); }
+button:focus-visible, .file:focus-within, input:focus-visible { outline: 2px solid var(--pink); outline-offset: 2px; }
+.primary { background: var(--pink); border-color: var(--pink); color: #1a0a11; }
+.file { position: relative; display: inline-flex; align-items: center; }
+.file input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.grow { flex: 1 1 160px; justify-content: center; text-align: center; }
+.rack { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 16px; display: grid; gap: 18px; }
+.group { display: grid; gap: 12px; }
+.group h2 { font-family: var(--mono); font-weight: 500; font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--muted); margin: 0; }
+.chips { display: flex; gap: 8px; flex-wrap: wrap; }
+.chip { padding: 8px 12px; font-size: 14px; font-weight: 500; border-radius: 999px; }
+.chip[aria-pressed="true"] { background: var(--pink-soft); border-color: var(--pink); color: var(--fg); }
+.ctl { display: grid; gap: 4px; }
+.ctl label { display: flex; justify-content: space-between; font-size: 14px; }
+.ctl output { font-family: var(--mono); font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.ctl small { color: var(--muted); font-size: 12px; }
+input[type=range] { width: 100%; accent-color: var(--pink); height: 28px; }
+.toggle { display: flex; align-items: center; gap: 10px; font-size: 14px; }
+.toggle input { width: 20px; height: 20px; accent-color: var(--pink); }
+.sheet { position: fixed; inset: 0; background: rgba(10,6,8,.94); display: grid; grid-template-rows: auto 1fr; gap: 12px; padding: calc(16px + env(safe-area-inset-top, 0px)) 16px calc(16px + env(safe-area-inset-bottom, 0px)); z-index: 10; }
+.sheet .top { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.sheet p { margin: 0; font-size: 14px; color: var(--fg); }
+.sheet .imgbox { min-height: 0; display: grid; place-items: center; overflow: auto; }
+.sheet img { max-height: 100%; max-width: 100%; object-fit: contain; -webkit-touch-callout: default; user-select: auto; -webkit-user-select: auto; }
+footer { font-size: 12px; color: var(--muted); }
+@media (prefers-reduced-motion: no-preference) { button { transition: background .15s, border-color .15s; } }
+</style>
+
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Infra<span>chrome</span></h1>
+    <div class="edge">Kodak Aerochrome III · 1443 · IR</div>
+  </header>
+
+  <div class="main">
+    <section class="stage">
+      <div class="frame" id="frame">
+        <canvas id="view" aria-label="Edited photo preview"></canvas>
+        <div class="tag" id="tag">Sample scene</div>
+      </div>
+      <div class="hint">Press and hold the photo to see the original.</div>
+      <div class="row">
+        <label class="file grow">Choose photo<input type="file" id="pick" accept="image/*"></label>
+        <button class="primary grow" id="export">Get full-size image</button>
+      </div>
+    </section>
+
+    <aside class="rack">
+      <div class="group">
+        <h2>Looks</h2>
+        <div class="chips" id="looks"></div>
+      </div>
+      <div class="group">
+        <h2>Pink leaves</h2>
+        <div class="chips" id="scope">
+          <button class="chip" data-scope="plants" aria-pressed="true">Plants only</button>
+          <button class="chip" data-scope="all" aria-pressed="false">Whole photo</button>
+        </div>
+        <label class="toggle"><input type="checkbox" id="protect" checked> Keep skin natural</label>
+        <div id="ctl-a"></div>
+      </div>
+      <div class="group">
+        <h2>Film</h2>
+        <div id="ctl-b"></div>
+      </div>
+      <button id="reset">Reset sliders</button>
+    </aside>
+  </div>
+
+  <footer>Everything runs on your phone. Your photo is never uploaded.</footer>
+</div>
+
+<div class="sheet" id="sheet" hidden>
+  <div class="top">
+    <p id="sheetMsg">Press and hold the image, then tap Save.</p>
+    <div class="row"><button class="primary" id="save" hidden>Save photo</button><button id="close">Close</button></div>
+  </div>
+  <div class="imgbox"><img id="outImg" alt="Full-size edited photo"></div>
+</div>
+
+<script>
+const SLIDERS = {
+  a: [
+    { id: 'strength', label: 'Pink amount', min: 0, max: 100 },
+    { id: 'range', label: 'Which greens', min: 20, max: 90, note: 'Raise it if some leaves stay green or yellow' },
+    { id: 'magenta', label: 'Red ↔ Magenta', min: 0, max: 100 },
+    { id: 'bright', label: 'Leaf glow', min: 0, max: 100 },
+  ],
+  b: [
+    { id: 'shadows', label: 'Green shadows', min: 0, max: 100 },
+    { id: 'sat', label: 'Colour punch', min: -50, max: 60 },
+    { id: 'fade', label: 'Faded blacks', min: 0, max: 100 },
+    { id: 'glow', label: 'Halation', min: 0, max: 100 },
+    { id: 'grain', label: 'Grain', min: 0, max: 100 },
+  ],
+};
+const LOOKS = {
+  'Mosse pink': { strength: 90, range: 60, magenta: 45, bright: 45, shadows: 40, sat: 15, fade: 25, glow: 30, grain: 25 },
+  'Deep magenta': { strength: 100, range: 65, magenta: 85, bright: 35, shadows: 55, sat: 30, fade: 15, glow: 20, grain: 20 },
+  'Soft rose': { strength: 70, range: 55, magenta: 55, bright: 65, shadows: 20, sat: -10, fade: 50, glow: 45, grain: 35 },
+  'Red jungle': { strength: 100, range: 70, magenta: 10, bright: 30, shadows: 45, sat: 25, fade: 20, glow: 25, grain: 30 },
+};
+const p = { ...LOOKS['Mosse pink'], scope: 'plants', protect: true };
+let activeLook = 'Mosse pink';
+
+const view = document.getElementById('view');
+const vctx = view.getContext('2d', { willReadFrequently: true });
+let srcFull = null;   // full-res source canvas
+let srcPrev = null;   // preview ImageData
+let outPrev = null;
+let showingBefore = false;
+
+function buildControls() {
+  for (const key of ['a', 'b']) {
+    const host = document.getElementById('ctl-' + key);
+    host.className = 'group';
+    for (const s of SLIDERS[key]) {
+      const d = document.createElement('div');
+      d.className = 'ctl';
+      d.innerHTML = `<label for="s-${s.id}"><span>${s.label}</span><output id="o-${s.id}"></output></label>
+        <input type="range" id="s-${s.id}" min="${s.min}" max="${s.max}" step="1">${s.note ? `<small>${s.note}</small>` : ''}`;
+      host.appendChild(d);
+      d.querySelector('input').addEventListener('input', e => {
+        p[s.id] = +e.target.value; activeLook = null; syncUI(); schedule();
+      });
+    }
+  }
+  const looks = document.getElementById('looks');
+  for (const name of Object.keys(LOOKS)) {
+    const b = document.createElement('button');
+    b.className = 'chip'; b.textContent = name; b.dataset.look = name;
+    b.addEventListener('click', () => { Object.assign(p, LOOKS[name]); activeLook = name; syncUI(); schedule(); });
+    looks.appendChild(b);
+  }
+  document.querySelectorAll('#scope .chip').forEach(b => b.addEventListener('click', () => {
+    p.scope = b.dataset.scope; syncUI(); schedule();
+  }));
+  document.getElementById('protect').addEventListener('change', e => { p.protect = e.target.checked; schedule(); });
+  document.getElementById('reset').addEventListener('click', () => { Object.assign(p, LOOKS['Mosse pink']); activeLook = 'Mosse pink'; syncUI(); schedule(); });
+}
+function syncUI() {
+  for (const s of [...SLIDERS.a, ...SLIDERS.b]) {
+    document.getElementById('s-' + s.id).value = p[s.id];
+    document.getElementById('o-' + s.id).textContent = p[s.id];
+  }
+  document.querySelectorAll('#looks .chip').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.look === activeLook)));
+  document.querySelectorAll('#scope .chip').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.scope === p.scope)));
+}
+
+const smooth = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
+
+// Core grade: infrared channel swap on foliage + film finish.
+function grade(src, w, h, opts) {
+  const s = src.data, out = new ImageData(w, h), d = out.data;
+  const str = opts.strength / 100, rng = opts.range, mag = opts.magenta / 100;
+  const gam = 1 - (opts.bright / 100) * 0.5, gain = 1.05 + (opts.bright / 100) * 0.25;
+  const sh = opts.shadows / 100, fd = opts.fade / 100, sat = opts.sat / 100, gr = opts.grain / 100;
+  const all = opts.scope === 'all', protect = opts.protect;
+  for (let i = 0; i < s.length; i += 4) {
+    const r = s[i] / 255, g = s[i + 1] / 255, b = s[i + 2] / 255;
+    const mx = Math.max(r, g, b), mn = Math.min(r, g, b), c = mx - mn;
+    const sv = mx > 0 ? c / mx : 0;
+    let hue = 0;
+    if (c > 1e-5) {
+      if (mx === r) hue = ((g - b) / c) % 6; else if (mx === g) hue = (b - r) / c + 2; else hue = (r - g) / c + 4;
+      hue *= 60; if (hue < 0) hue += 360;
+    }
+    let wgt;
+    if (all) wgt = 1;
+    else {
+      const dh = Math.abs(hue - 100);
+      wgt = (1 - smooth(rng * 0.55, rng, dh)) * smooth(0.05, 0.2, sv) * smooth(0.02, 0.1, mx);
+    }
+    if (protect) {
+      const skin = (1 - smooth(36, 50, hue)) * smooth(0.12, 0.2, sv) * (1 - smooth(0.72, 0.88, sv)) * smooth(0.12, 0.25, mx);
+      wgt *= 1 - skin;
+    }
+    // Infrared swap: green becomes red, red becomes green, magenta adds blue back.
+    let ir = Math.pow(Math.min(1, (g * 1.0 + r * 0.12) * gain), gam);
+    let ig = Math.pow(Math.min(1, (r * 0.42 + b * 0.1) * gain), gam);
+    let ib = Math.pow(Math.min(1, (b * 0.55 + g * mag * 0.85) * gain), gam);
+    const k = wgt * str;
+    let R = r + (ir - r) * k, G = g + (ig - g) * k, B = b + (ib - b) * k;
+    // Film finish
+    let L = 0.299 * R + 0.587 * G + 0.114 * B;
+    const sf = 1 + sat * 0.6;
+    R = L + (R - L) * sf; G = L + (G - L) * sf; B = L + (B - L) * sf;
+    const sw = (1 - L) * (1 - L) * (1 - L);
+    G += sh * 0.11 * sw; B += sh * 0.06 * sw; R -= sh * 0.05 * sw;
+    const lift = fd * 0.09, roll = 1 - fd * 0.1;
+    R = lift + R * roll; G = lift + G * roll; B = lift + B * roll * 0.98;
+    if (gr > 0) {
+      const n = (Math.random() - 0.5) * gr * 0.17 * (0.4 + 1.2 * L * (1 - L) * 2);
+      R += n; G += n; B += n;
+    }
+    d[i] = R * 255; d[i + 1] = G * 255; d[i + 2] = B * 255; d[i + 3] = 255;
+  }
+  return out;
+}
+
+// Halation: blurred highlights, tinted warm red, screened back on top.
+function halation(ctx, w, h, amount) {
+  if (amount <= 0) return;
+  const sw = Math.max(8, Math.round(w / 24)), shh = Math.max(8, Math.round(h / 24));
+  const small = document.createElement('canvas'); small.width = sw; small.height = shh;
+  const sctx = small.getContext('2d', { willReadFrequently: true });
+  sctx.imageSmoothingQuality = 'high';
+  sctx.drawImage(ctx.canvas, 0, 0, sw, shh);
+  const id = sctx.getImageData(0, 0, sw, shh), q = id.data;
+  for (let i = 0; i < q.length; i += 4) {
+    const L = (0.299 * q[i] + 0.587 * q[i + 1] + 0.114 * q[i + 2]) / 255;
+    const t = smooth(0.62, 0.95, L);
+    q[i] = 255 * t; q[i + 1] = 90 * t; q[i + 2] = 60 * t; q[i + 3] = 255;
+  }
+  sctx.putImageData(id, 0, 0);
+  const mid = document.createElement('canvas'); mid.width = sw * 4; mid.height = shh * 4;
+  const mctx = mid.getContext('2d'); mctx.imageSmoothingQuality = 'high';
+  mctx.drawImage(small, 0, 0, mid.width, mid.height);
+  ctx.save();
+  ctx.globalCompositeOperation = 'screen';
+  ctx.globalAlpha = amount / 100 * 0.75;
+  ctx.imageSmoothingQuality = 'high';
+  ctx.drawImage(mid, 0, 0, w, h);
+  ctx.restore();
+}
+
+function render() {
+  if (!srcPrev) return;
+  outPrev = grade(srcPrev, view.width, view.height, p);
+  vctx.putImageData(outPrev, 0, 0);
+  halation(vctx, view.width, view.height, p.glow);
+  outPrev = vctx.getImageData(0, 0, view.width, view.height);
+}
+let pending = false;
+function schedule() {
+  if (pending) return; pending = true;
+  requestAnimationFrame(() => { pending = false; if (!showingBefore) render(); });
+}
+
+function loadSource(canvas, label) {
+  srcFull = canvas;
+  const max = 1100, sc = Math.min(1, max / Math.max(canvas.width, canvas.height));
+  view.width = Math.round(canvas.width * sc); view.height = Math.round(canvas.height * sc);
+  vctx.imageSmoothingQuality = 'high';
+  vctx.drawImage(canvas, 0, 0, view.width, view.height);
+  srcPrev = vctx.getImageData(0, 0, view.width, view.height);
+  document.getElementById('tag').textContent = label;
+  render();
+}
+
+// Sample scene so the tool shows the effect before a photo is chosen.
+function sampleScene() {
+  const c = document.createElement('canvas'); c.width = 900; c.height = 1100;
+  const x = c.getContext('2d');
+  const sky = x.createLinearGradient(0, 0, 0, 520); sky.addColorStop(0, '#8fb4d6'); sky.addColorStop(1, '#cfdde6');
+  x.fillStyle = sky; x.fillRect(0, 0, 900, 560);
+  x.fillStyle = '#b9a58a'; x.fillRect(0, 560, 900, 540);
+  let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  const greens = ['#2f5a24', '#3d6e2b', '#4f7f2f', '#6e9a3a', '#8aa83e', '#a9b84a', '#284d22'];
+  for (let i = 0; i < 1700; i++) {
+    const cx = rnd() * 900, cy = 120 + Math.pow(rnd(), 0.8) * 520, rr = 8 + rnd() * 34;
+    x.fillStyle = greens[Math.floor(rnd() * greens.length)]; x.globalAlpha = 0.85;
+    x.beginPath(); x.ellipse(cx, cy, rr, rr * 0.7, rnd() * 3, 0, 7); x.fill();
+  }
+  for (let i = 0; i < 900; i++) {
+    const cx = rnd() * 900, cy = 820 + rnd() * 280, rr = 6 + rnd() * 22;
+    x.fillStyle = greens[Math.floor(rnd() * greens.length)];
+    x.beginPath(); x.ellipse(cx, cy, rr, rr * 0.6, rnd() * 3, 0, 7); x.fill();
+  }
+  x.globalAlpha = 1;
+  x.fillStyle = '#5b4a3c'; x.fillRect(430, 330, 40, 330);
+  x.fillStyle = '#e9e4dc'; x.fillRect(660, 200, 18, 620);
+  x.fillStyle = '#4a3a6a'; x.fillRect(250, 600, 170, 260);
+  x.fillStyle = '#c08a64'; x.beginPath(); x.ellipse(335, 545, 52, 62, 0, 0, 7); x.fill();
+  x.fillStyle = '#241a16'; x.beginPath(); x.ellipse(335, 500, 56, 34, 0, 0, 7); x.fill();
+  return c;
+}
+
+document.getElementById('pick').addEventListener('change', async e => {
+  const f = e.target.files && e.target.files[0]; if (!f) return;
+  const url = URL.createObjectURL(f);
+  const img = new Image();
+  img.onload = () => {
+    const cap = 4000, sc = Math.min(1, cap / Math.max(img.naturalWidth, img.naturalHeight));
+    const c = document.createElement('canvas');
+    c.width = Math.round(img.naturalWidth * sc); c.height = Math.round(img.naturalHeight * sc);
+    c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+    URL.revokeObjectURL(url);
+    loadSource(c, 'Your photo');
+  };
+  img.onerror = () => { document.getElementById('tag').textContent = 'Could not open that file. Try a JPG or PNG.'; };
+  img.src = url;
+});
+
+// Hold to compare
+const frame = document.getElementById('frame');
+function before(on) {
+  if (!srcPrev) return;
+  showingBefore = on;
+  vctx.putImageData(on ? srcPrev : outPrev, 0, 0);
+  const tag = document.getElementById('tag');
+  tag.classList.toggle('before', on);
+  tag.textContent = on ? 'Original' : (srcFull && srcFull.width === 900 && srcFull.height === 1100 ? 'Sample scene' : 'Your photo');
+  if (!on) schedule();
+}
+frame.addEventListener('pointerdown', e => { e.preventDefault(); before(true); });
+['pointerup', 'pointerleave', 'pointercancel'].forEach(t => frame.addEventListener(t, () => showingBefore && before(false)));
+frame.addEventListener('contextmenu', e => e.preventDefault());
+
+// Full-size export into an image the user can long-press to save
+document.getElementById('export').addEventListener('click', () => {
+  if (!srcFull) return;
+  const btn = document.getElementById('export'); btn.textContent = 'Working…'; btn.disabled = true;
+  setTimeout(() => {
+    try {
+      const c = document.createElement('canvas'); c.width = srcFull.width; c.height = srcFull.height;
+      const x = c.getContext('2d', { willReadFrequently: true });
+      x.drawImage(srcFull, 0, 0);
+      const full = grade(x.getImageData(0, 0, c.width, c.height), c.width, c.height, p);
+      x.putImageData(full, 0, 0);
+      halation(x, c.width, c.height, p.glow);
+      const dataUrl = c.toDataURL('image/jpeg', 0.93);
+      document.getElementById('outImg').src = dataUrl;
+      prepareSave(dataUrl);
+      document.getElementById('sheetMsg').textContent = `Tap Save photo, then Save Image. Or press and hold the image. (${c.width} × ${c.height})`;
+      document.getElementById('sheet').hidden = false;
+    } catch (err) {
+      document.getElementById('tag').textContent = 'That photo is too big for this phone. Try a smaller one.';
+    }
+    btn.textContent = 'Get full-size image'; btn.disabled = false;
+  }, 30);
+});
+let saveFile = null;
+async function prepareSave(dataUrl) {
+  const btn = document.getElementById('save');
+  try {
+    const blob = await (await fetch(dataUrl)).blob();
+    saveFile = new File([blob], 'infrachrome-' + Date.now() + '.jpg', { type: 'image/jpeg' });
+    btn.hidden = !(navigator.canShare && navigator.canShare({ files: [saveFile] }));
+  } catch (e) { btn.hidden = true; }
+}
+document.getElementById('save').addEventListener('click', async () => {
+  if (!saveFile) return;
+  try { await navigator.share({ files: [saveFile] }); } catch (e) {}
+});
+document.getElementById('close').addEventListener('click', () => { document.getElementById('sheet').hidden = true; });
+
+buildControls();
+syncUI();
+loadSource(sampleScene(), 'Sample scene');
+</script>
+
+</body>
+</html>
